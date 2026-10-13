@@ -1,5 +1,21 @@
 import 'leaflet/dist/leaflet.css';
+import '@photo-sphere-viewer/core/index.css';
 import './styles/main.css';
+
+import L from 'leaflet';
+
+// Fix Leaflet default icon (required for Vite builds)
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
+
 import { getMapSettings, getPhoto } from './api/client.js';
 import type { Photo, PhotoDetail } from './api/client.js';
 import { initMap } from './map/map.js';
@@ -12,16 +28,6 @@ import { MiniMap } from './viewer/minimap.js';
 import { ViewerControls } from './ui/controls.js';
 import { ReportModal } from './ui/report.js';
 import { i18n } from './i18n/id.js';
-import L from 'leaflet';
-
-// Fix Leaflet default icon paths (Vite issue)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
-  iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
-  shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
-});
 
 // ===========================
 // App State
@@ -43,24 +49,17 @@ const state: AppState = {
 // ===========================
 // DOM Setup
 // ===========================
-const appRoot = document.getElementById('app-root')!;
 
 // Map title box
 const titleBox = document.createElement('div');
 titleBox.className = 'map-title-box';
 titleBox.textContent = i18n.appTitle;
-titleBox.setAttribute('aria-label', i18n.appTitle);
 document.body.appendChild(titleBox);
 
-// Street View card container (on top of map)
-const cardContainer = document.createElement('div');
-cardContainer.style.position = 'absolute';
-cardContainer.style.inset = '0';
-cardContainer.style.pointerEvents = 'none';
-cardContainer.style.zIndex = '400';
-document.body.appendChild(cardContainer);
+// Street View card sits inside app-root (pointer-events auto on the card itself)
+const appRoot = document.getElementById('app-root')!;
 
-// Viewer overlay (hidden initially)
+// Viewer overlay (hidden initially, outside app-root so it can cover everything)
 const viewerOverlay = document.createElement('div');
 viewerOverlay.className = 'viewer-overlay';
 viewerOverlay.style.display = 'none';
@@ -71,30 +70,31 @@ document.body.appendChild(viewerOverlay);
 // Viewer canvas (PSV container)
 const viewerCanvas = document.createElement('div');
 viewerCanvas.className = 'viewer-canvas';
+viewerCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
 viewerOverlay.appendChild(viewerCanvas);
 
 // Minimap container
 const minimapEl = document.createElement('div');
 minimapEl.className = 'minimap';
-minimapEl.setAttribute('aria-label', i18n.ariaMinimap);
+minimapEl.setAttribute('aria-label', i18n.ariaMinimap ?? 'Peta mini');
 viewerOverlay.appendChild(minimapEl);
 
-// Location info
+// Location info (top-right in viewer)
 const locationInfo = document.createElement('div');
 locationInfo.className = 'location-info';
 viewerOverlay.appendChild(locationInfo);
 
-// Report button
+// Report button (bottom-right area, above controls)
 const reportBtn = document.createElement('button');
-reportBtn.className = 'btn-secondary report-btn';
-reportBtn.textContent = '🚩';
-reportBtn.setAttribute('aria-label', i18n.report);
-reportBtn.setAttribute('title', i18n.report);
+reportBtn.className = 'report-btn';
+reportBtn.innerHTML = '🚩';
+reportBtn.setAttribute('aria-label', i18n.report ?? 'Laporkan');
+reportBtn.setAttribute('title', i18n.report ?? 'Laporkan');
 reportBtn.style.cssText = `
-  position: absolute; bottom: 80px; right: 16px; z-index: 1010;
-  width: 44px; height: 44px; border-radius: 50%; background: white;
-  border: none; box-shadow: 0 2px 6px rgba(0,0,0,0.4); cursor: pointer;
-  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  position:absolute; bottom:80px; right:16px; z-index:1010;
+  width:44px; height:44px; border-radius:50%; background:white;
+  border:none; box-shadow:0 2px 6px rgba(0,0,0,.4); cursor:pointer;
+  font-size:18px; display:flex; align-items:center; justify-content:center;
 `;
 viewerOverlay.appendChild(reportBtn);
 
@@ -114,7 +114,7 @@ const reportModal = new ReportModal();
 // Init
 // ===========================
 async function init(): Promise<void> {
-  // Load map settings
+  // Load map settings from API (with fallback)
   let settings;
   try {
     settings = await getMapSettings();
@@ -127,49 +127,41 @@ async function init(): Promise<void> {
     };
   }
 
-  // Initialize map
+  // Initialize Leaflet map
   leafletMap = initMap(settings);
+
+  // Position marker (orange circle + heading cone)
   positionMarker = new PositionMarker(leafletMap);
 
-  // Street View card
-  streetViewCard = new StreetViewCard(cardContainer);
-  (streetViewCard.getElement() as HTMLElement).style.pointerEvents = 'auto';
+  // Street View card (bottom-left)
+  streetViewCard = new StreetViewCard(appRoot);
+  streetViewCard.getElement().style.pointerEvents = 'auto';
   streetViewCard.onOpen(() => {
     if (state.currentPhoto) openViewer(state.currentPhoto);
   });
 
-  // Coverage layer
+  // Coverage layer — load and handle clicks
   const coverage = createCoverageManager((photo: Photo) => {
     selectPhoto(photo);
   });
-
-  // Load coverage initially
   await coverage.load(leafletMap);
 
-  // Reload coverage on map move (debounced)
+  // Reload coverage when map moves
   let moveTimer: ReturnType<typeof setTimeout>;
   leafletMap.on('moveend', () => {
     clearTimeout(moveTimer);
-    moveTimer = setTimeout(() => coverage.load(leafletMap), 300);
+    moveTimer = setTimeout(() => coverage.load(leafletMap), 400);
   });
 }
 
 async function selectPhoto(photo: Photo): Promise<void> {
   state.selectedPhotoId = photo.id;
-
-  // Load full photo detail
   try {
     const detail = await getPhoto(photo.id);
     state.currentPhoto = detail;
     state.viewerHeading = detail.headingDeg;
-
-    // Update map marker
     positionMarker.update(detail.lat, detail.lon, detail.headingDeg);
-
-    // Pan map to show the photo
     leafletMap.panTo([detail.lat, detail.lon], { animate: true });
-
-    // Update card
     streetViewCard.setPhoto(detail);
   } catch (err) {
     console.error('Gagal memuat foto:', err);
@@ -178,66 +170,60 @@ async function selectPhoto(photo: Photo): Promise<void> {
 
 function openViewer(photo: PhotoDetail): void {
   state.viewerOpen = true;
-  viewerOverlay.style.display = 'flex';
+  viewerOverlay.style.display = 'block';
   document.body.style.overflow = 'hidden';
 
-  // Initialize panorama viewer
   if (!panoramaViewer) {
     panoramaViewer = new PanoramaViewer(viewerCanvas);
     panoramaViewer.onHeadingChange((heading) => {
       state.viewerHeading = heading;
       positionMarker.updateHeading(heading);
-      miniMap?.update(photo.lat, photo.lon, heading);
-
-      // Update navigation arrows
+      miniMap?.update(
+        state.currentPhoto?.lat ?? photo.lat,
+        state.currentPhoto?.lon ?? photo.lon,
+        heading,
+      );
       if (state.currentPhoto) {
         navigationArrows?.updateArrows(state.currentPhoto.neighbors, heading);
       }
     });
   }
 
-  // Initialize navigation arrows
   if (!navigationArrows) {
     navigationArrows = new NavigationArrows(viewerCanvas, async (neighborId) => {
       await navigateTo(neighborId);
     });
   }
 
-  // Initialize minimap
   if (!miniMap) {
     miniMap = new MiniMap(minimapEl);
   }
 
-  // Initialize viewer controls
   if (!viewerControls) {
     viewerControls = new ViewerControls(viewerOverlay);
     viewerControls.render((action) => handleControlAction(action));
   }
 
-  // Load the photo
   panoramaViewer.load(photo).then(() => {
-    // Update minimap
     miniMap?.update(photo.lat, photo.lon, photo.headingDeg);
-
-    // Update navigation arrows
     navigationArrows?.updateArrows(photo.neighbors, state.viewerHeading);
-
-    // Update location info
     updateLocationInfo(photo);
+    // Prefetch neighbor thumbnails
+    for (const n of photo.neighbors) {
+      const img = new Image();
+      img.src = `/api/photos/thumb/${n.id}`;
+    }
   });
 
-  // Report button handler
   reportBtn.onclick = () => {
-    if (state.currentPhoto) {
-      reportModal.show(state.currentPhoto.id);
-    }
+    if (state.currentPhoto) reportModal.show(state.currentPhoto.id);
   };
 }
 
 function updateLocationInfo(photo: PhotoDetail): void {
   locationInfo.innerHTML = `
     ${photo.near ? `<div class="place-name">${photo.near}</div>` : ''}
-    <div class="coords">${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)}</div>
+    <div class="coords">${Number(photo.lat).toFixed(5)}, ${Number(photo.lon).toFixed(5)}</div>
   `;
 }
 
@@ -245,10 +231,7 @@ function closeViewer(): void {
   state.viewerOpen = false;
   viewerOverlay.style.display = 'none';
   document.body.style.overflow = '';
-
   navigationArrows?.clear();
-
-  // Destroy controls (keyboard handler)
   viewerControls?.destroy();
   viewerControls = null;
 }
@@ -258,29 +241,16 @@ async function navigateTo(photoId: number): Promise<void> {
     const photo = await getPhoto(photoId);
     state.selectedPhotoId = photo.id;
     state.currentPhoto = photo;
-
-    // Transition with maintained compass heading
     await panoramaViewer?.transitionTo(photo, state.viewerHeading);
-
-    // Update marker on main map
     positionMarker.update(photo.lat, photo.lon, state.viewerHeading);
-
-    // Update minimap
     miniMap?.update(photo.lat, photo.lon, state.viewerHeading);
-
-    // Update arrows
     navigationArrows?.updateArrows(photo.neighbors, state.viewerHeading);
-
-    // Update location info
     updateLocationInfo(photo);
-
-    // Update card (for when returning to map)
     streetViewCard.setPhoto(photo);
-
-    // Prefetch neighbor thumbnails
+    // Prefetch
     for (const n of photo.neighbors) {
-      const img = new window.Image();
-      img.src = `/api/photos/${n.id}/thumb`; // Trigger load
+      const img = new Image();
+      img.src = `/api/photos/thumb/${n.id}`;
     }
   } catch (err) {
     console.error('Navigasi gagal:', err);
@@ -293,16 +263,12 @@ function handleControlAction(action: string): void {
       closeViewer();
       break;
     case 'forward': {
-      // Find the neighbor closest to current heading
-      if (!state.currentPhoto?.neighbors.length) break;
-      const fwd = findNeighborInDirection(state.viewerHeading, 0);
+      const fwd = findNeighborInDirection(state.viewerHeading);
       if (fwd) navigateTo(fwd.id);
       break;
     }
     case 'backward': {
-      // Navigate to neighbor ~180° from current heading
-      if (!state.currentPhoto?.neighbors.length) break;
-      const bwd = findNeighborInDirection((state.viewerHeading + 180) % 360, 0);
+      const bwd = findNeighborInDirection((state.viewerHeading + 180) % 360);
       if (bwd) navigateTo(bwd.id);
       break;
     }
@@ -317,24 +283,17 @@ function handleControlAction(action: string): void {
 
 function findNeighborInDirection(
   targetBearing: number,
-  tolerance: number
-): { id: number; bearingDeg: number; distanceM: number } | null {
+): { id: number; bearingDeg: number; distanceM: number; thumbUrl?: string } | null {
   if (!state.currentPhoto?.neighbors.length) return null;
-
   let best = null;
   let bestDiff = 181;
-
   for (const n of state.currentPhoto.neighbors) {
     let diff = Math.abs(n.bearingDeg - targetBearing);
     if (diff > 180) diff = 360 - diff;
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      best = n;
-    }
+    if (diff < bestDiff) { bestDiff = diff; best = n; }
   }
-
   return best;
 }
 
-// Start the app
+// Start
 init().catch(console.error);

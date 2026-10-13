@@ -3,49 +3,44 @@ import type { MapSettings } from '../api/client.js';
 
 const DEFAULT_CENTER: [number, number] = [4.62, 96.84];
 const DEFAULT_ZOOM = 12;
-const TILE_URL =
-  (import.meta.env.VITE_TILE_URL as string) ||
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+// Tile URL: OpenStreetMap — gratis, tanpa API key
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+const TILE_ATTRIBUTION =
+  '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors';
 
 export function initMap(settings: MapSettings): L.Map {
-  const center: [number, number] = [settings.center.lat, settings.center.lon];
-  const zoom = settings.zoom;
+  const center: [number, number] = settings.center
+    ? [Number(settings.center.lat), Number(settings.center.lon)]
+    : DEFAULT_CENTER;
+  const zoom = settings.zoom ?? DEFAULT_ZOOM;
 
   const mapOptions: L.MapOptions = {
-    center: center ?? DEFAULT_CENTER,
-    zoom: zoom ?? DEFAULT_ZOOM,
+    center,
+    zoom,
     zoomControl: true,
     attributionControl: true,
   };
 
-  // Apply bounds if provided
+  // Apply map bounds if configured
   if (settings.bounds) {
     const { minLat, minLon, maxLat, maxLon } = settings.bounds;
-    // Add padding to allow slight movement outside bounds
-    const latPad = (maxLat - minLat) * 0.1;
-    const lonPad = (maxLon - minLon) * 0.1;
+    const latPad = (Number(maxLat) - Number(minLat)) * 0.15;
+    const lonPad = (Number(maxLon) - Number(minLon)) * 0.15;
     mapOptions.maxBounds = L.latLngBounds(
-      [minLat - latPad, minLon - lonPad],
-      [maxLat + latPad, maxLon + lonPad]
+      [Number(minLat) - latPad, Number(minLon) - lonPad],
+      [Number(maxLat) + latPad, Number(maxLon) + lonPad],
     );
-    mapOptions.maxBoundsViscosity = 0.9;
-
-    // Calculate minimum zoom so the whole area fits
-    const bounds = L.latLngBounds([minLat, minLon], [maxLat, maxLon]);
-    const mapEl = document.getElementById('map');
-    if (mapEl) {
-      const tempMap = L.map(document.createElement('div'));
-      const fitZoom = tempMap.getBoundsZoom(bounds);
-      tempMap.remove();
-      mapOptions.minZoom = Math.max(1, fitZoom - 1);
-    }
+    mapOptions.maxBoundsViscosity = 0.85;
+    mapOptions.minZoom = 9; // Prevent zooming out too far
   }
 
   const map = L.map('map', mapOptions);
 
+  // Add tile layer
   L.tileLayer(TILE_URL, {
-    attribution:
-      '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    attribution: TILE_ATTRIBUTION,
     maxZoom: 19,
     subdomains: ['a', 'b', 'c'],
   }).addTo(map);
