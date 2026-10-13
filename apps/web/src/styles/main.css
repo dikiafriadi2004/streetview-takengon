@@ -1,0 +1,562 @@
+/* =============================
+   Base Reset & Typography
+   ============================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: #202124;
+  background: #e5e3df;
+}
+
+/* =============================
+   Map Container
+   ============================= */
+#map {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+}
+
+/* =============================
+   Map Title Box (top-left)
+   ============================= */
+.map-title-box {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: white;
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06);
+  z-index: 400;
+  font-weight: 500;
+  font-size: 14px;
+  color: #202124;
+  letter-spacing: 0.01em;
+}
+
+/* =============================
+   Street View Card (bottom-left)
+   ============================= */
+.street-view-card {
+  position: absolute;
+  bottom: 24px;
+  left: 12px;
+  width: 270px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06);
+  z-index: 400;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+.street-view-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}
+
+.sv-card-empty {
+  padding: 20px 16px;
+  text-align: center;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sv-card-hint {
+  margin: 0;
+  color: #5f6368;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.sv-card-thumb-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.sv-card-thumb-wrapper img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.sv-card-overlay-label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sv-card-info {
+  padding: 10px 12px 12px;
+}
+
+.sv-card-place {
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sv-card-coords {
+  font-size: 12px;
+  color: #5f6368;
+  margin-bottom: 8px;
+}
+
+.sv-card-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 0;
+  background: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease;
+}
+
+.sv-card-btn:hover {
+  background: #1557b0;
+}
+
+/* =============================
+   Viewer Overlay (full screen)
+   ============================= */
+.viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewer-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* =============================
+   Back Button
+   ============================= */
+.back-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1010;
+  background: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  color: #202124;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.back-btn:hover {
+  background: #f8f8f8;
+}
+
+/* =============================
+   Location Info (top-right)
+   ============================= */
+.location-info {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1010;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 220px;
+}
+
+.location-info .place-name {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.location-info .coords {
+  opacity: 0.85;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* =============================
+   Mini Map (bottom-left in viewer)
+   ============================= */
+.minimap {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1010;
+  width: 170px;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+/* =============================
+   Viewer Controls (bottom-right)
+   ============================= */
+.viewer-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 1010;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.viewer-controls .ctrl-btn,
+.viewer-controls button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #202124;
+  transition: background 0.15s ease;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.viewer-controls .ctrl-btn:hover,
+.viewer-controls button:hover {
+  background: #f0f0f0;
+}
+
+/* Report button */
+.report-btn {
+  width: 44px !important;
+  height: 44px !important;
+  font-size: 12px !important;
+  color: #d32f2f !important;
+}
+
+/* =============================
+   Navigation Arrows
+   ============================= */
+.nav-arrow {
+  position: absolute;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  background: rgba(255,255,255,0.9);
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 1005;
+  transition: background 0.15s ease, transform 0.15s ease;
+  padding: 0;
+}
+
+.nav-arrow:hover {
+  background: white;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.arrow-dist {
+  font-size: 9px;
+  color: #5f6368;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* =============================
+   Position Marker (map)
+   ============================= */
+.position-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.minimap-dot {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* =============================
+   Modal (Report)
+   ============================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.modal-title {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: #5f6368;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #202124;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-select:focus,
+.form-textarea:focus {
+  border-color: #1a73e8;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.report-status {
+  min-height: 20px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.report-success { color: #2e7d32; }
+.report-error { color: #d32f2f; }
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  background: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.15s ease;
+}
+
+.btn-primary:hover { background: #1557b0; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent;
+  color: #1a73e8;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.15s ease;
+}
+
+.btn-secondary:hover { background: #f8f9fa; }
+
+/* =============================
+   Responsive (Mobile)
+   ============================= */
+@media (max-width: 480px) {
+  .street-view-card {
+    width: calc(100vw - 24px);
+    bottom: 12px;
+    left: 12px;
+  }
+
+  .map-title-box {
+    top: 8px;
+    left: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .back-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .location-info {
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    max-width: 160px;
+  }
+
+  .minimap {
+    width: 130px;
+    height: 90px;
+  }
+}
+
+/* =============================
+   Dark Mode
+   ============================= */
+@media (prefers-color-scheme: dark) {
+  .map-title-box {
+    background: #292a2d;
+    color: #e8eaed;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+
+  .street-view-card {
+    background: #292a2d;
+    color: #e8eaed;
+  }
+
+  .sv-card-hint {
+    color: #9aa0a6;
+  }
+
+  .sv-card-place {
+    color: #e8eaed;
+  }
+
+  .sv-card-coords {
+    color: #9aa0a6;
+  }
+
+  .sv-card-btn {
+    background: #8ab4f8;
+    color: #202124;
+  }
+
+  .sv-card-btn:hover {
+    background: #aecbfa;
+  }
+
+  .back-btn {
+    background: #292a2d;
+    color: #e8eaed;
+  }
+
+  .back-btn:hover {
+    background: #35363a;
+  }
+
+  .viewer-controls .ctrl-btn,
+  .viewer-controls button {
+    background: #292a2d;
+    color: #e8eaed;
+  }
+
+  .nav-arrow {
+    background: rgba(41,42,45,0.9);
+    color: #e8eaed;
+  }
+
+  .modal-content {
+    background: #292a2d;
+    color: #e8eaed;
+  }
+
+  .modal-title {
+    color: #e8eaed;
+  }
+
+  .form-select,
+  .form-textarea {
+    background: #35363a;
+    color: #e8eaed;
+    border-color: #5f6368;
+  }
+}
+
+/* =============================
+   Leaflet Overrides
+   ============================= */
+.leaflet-control-zoom {
+  margin-top: 10px !important;
+}
+
+.leaflet-top.leaflet-right {
+  top: 60px;
+}

@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Seed data (synthetic photos for dev), end-to-end Playwright tests for the main user journey, and Docker Compose integration verification. Depends on FEAT-001 (docker-compose, package configs), FEAT-002 (API routes), FEAT-003 (frontend). This is the integration and testing feature that proves the full stack works together.",
+  "status": "pending",
+  "steps": [
+    "Extend db/seed/seed.ts to also insert one synthetic sequence and 10 synthetic photos along Jalan Lebe Kader Takengon (lat ~4.629, lon starting ~96.835, heading east ~90°, spaced ~8m apart). Each photo has file_path='media/demo/photo_N.jpg' and thumb_path='media/demo/thumb_N.jpg', status='published'. Insert photo_links: consecutive pairs with bearingDeg ~90° (forward) and ~270° (backward), distance_m ~8. This provides data for API and frontend dev without real photos. File: db/seed/seed.ts",
+
+    "Create apps/web/e2e/ directory and apps/web/playwright.config.ts: configure Playwright with baseURL http://localhost:5173, browser: chromium, 1 worker, screenshot on failure. File: apps/web/playwright.config.ts (or root-level e2e/playwright.config.ts — place at repo root to test the full stack)",
+
+    "Create e2e/main.spec.ts (at repo root e2e/ directory): Test 1 'map loads centered on Takengon' — navigate to /, wait for #map, check map tile requests contain 'carto'. Test 2 'click coverage line opens card' — mock GET /api/coverage to return a simple LineString GeoJSON near center, mock /api/photos/nearest to return first synthetic photo, click at map center, assert #card-container shows thumbnail img and 'Street View' text. Test 3 'card click opens panorama viewer' — continuing from Test 2, click the card, assert #street-view-container is visible. Test 4 'navigation arrows appear and navigate' — assert at least one arrow button visible, click it, assert viewer updated (photo id changed). Test 5 'Esc returns to map' — press Escape, assert #street-view-container is hidden, #map is visible. File: e2e/main.spec.ts",
+
+    "Add Playwright config and e2e script to root package.json: add 'test:e2e': 'playwright test' and devDependencies: @playwright/test@^1.40. File: package.json (root)",
+
+    "Verify Docker Compose integration: ensure docker-compose.yml db service mounts both migration files (001 and 002) in /docker-entrypoint-initdb.d so they run in order on first start. Add a healthcheck wait in api service using depends_on db with condition: service_healthy. Verify nginx config serves /api/ correctly from api container. File: docker-compose.yml, nginx.conf (review and fix if needed)",
+
+    "Add CSS styles in apps/web/src/main.ts or a separate apps/web/src/style.css: body/html margin:0 overflow:hidden. #map width:100vw height:100vh. #street-view-container position:fixed inset:0 z-index:1000 display:none (show class toggles display:block). Viewer controls positioned with position:absolute. Dark mode: @media (prefers-color-scheme:dark) inverts card background to #1e1e1e, text to #f0f0f0. File: apps/web/src/style.css (import in main.ts)"
+  ],
+  "acceptance_criteria": [
+    "docker compose up --build starts all three services without error",
+    "curl http://localhost/api/coverage?bbox=96.8,4.6,96.9,4.7 returns GeoJSON with at least one feature (from seed data)",
+    "curl http://localhost/api/photos/nearest?lat=4.629&lon=96.835&maxM=50 returns a photo object",
+    "npx playwright test (from root) — all 5 e2e tests pass against running dev servers",
+    "Page renders correctly in dark mode (test by forcing prefers-color-scheme:dark in Playwright)"
+  ],
+  "verification": [
+    "npx playwright test (from repo root, with dev servers running) — all tests pass",
+    "docker compose up --build — exits healthy, curl /api/coverage returns non-empty GeoJSON"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-streetview-takengon",
+  "task_description": "Build a full-stack Street View web application for Takengon, Aceh Tengah. Google Maps-style UI: full-screen Leaflet map, blue coverage lines, Street View card bottom-left, full-screen Photo Sphere Viewer panorama with navigation arrows and minimap. Fastify + MySQL 8 API with spatial queries, JWT admin auth, local storage driver, import CLI.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

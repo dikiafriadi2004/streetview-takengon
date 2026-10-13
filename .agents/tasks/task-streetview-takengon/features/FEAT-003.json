@@ -1,0 +1,49 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Frontend web application: full-screen Google Maps-style Leaflet map, Street View preview card, Photo Sphere Viewer panorama, navigation arrows, minimap, keyboard controls, and responsive layout. Depends on FEAT-001 (package.json, tsconfig, vite.config). Independent of FEAT-002 during build — the API client uses fetch and works against the Vite dev proxy.",
+  "status": "pending",
+  "steps": [
+    "Create apps/web/src/i18n/id.ts: export const i18n object with all Indonesian UI strings. Keys: appTitle:'Street View Takengon', clickHint:'Klik garis biru untuk memilih lokasi', backToMap:'Kembali ke Peta', forward:'Maju', back:'Mundur', report:'Laporkan', streetView:'Street View', loading:'Memuat...', noPhoto:'Foto tidak tersedia', reportTitle:'Laporkan Masalah', reportPrivacy:'Privasi (wajah/plat)', reportWrongLocation:'Lokasi salah', reportOther:'Lainnya', reportSend:'Kirim Laporan', reportSent:'Laporan terkirim', nearLabel:'Dekat', attribution:'© OpenStreetMap contributors, CARTO'. File: apps/web/src/i18n/id.ts",
+
+    "Create apps/web/src/api/client.ts: typed API client using native fetch. Functions: getCoverage(bbox:{minLon,minLat,maxLon,maxLat}):Promise<GeoJSON.FeatureCollection>. getNearestPhoto(lat,lon,maxM?):Promise<PhotoDetail|null>. getPhoto(id:number):Promise<PhotoDetail>. searchPlaces(q:string):Promise<Place[]>. submitReport(body:{photoId,type,note?}):Promise<{id:number}>. Types: PhotoDetail{id,url,thumbUrl,lat,lon,headingDeg,northOffsetDeg,projection,near,neighbors:Neighbor[]}. Neighbor{id,bearingDeg,distanceM}. Place{id,name,category,lat,lon}. All functions throw on non-2xx with error.message from response JSON. File: apps/web/src/api/client.ts",
+
+    "Create apps/web/src/map/map.ts: initializes and exports a Leaflet map. export function initMap(containerId:string):L.Map. Creates map centered at [4.62, 96.84] zoom 13. Adds tile layer from import.meta.env.VITE_TILE_URL (fallback CartoCDN voyager URL), attribution from VITE_TILE_ATTRIBUTION. Disables default zoom control (re-added bottom-right). Returns map instance. File: apps/web/src/map/map.ts",
+
+    "Create apps/web/src/map/coverage.ts: export function loadCoverage(map:L.Map, onPhotoSelect:(id:number)=>void):void. Calls getCoverage with current map bbox + 0.02 degree padding. Creates a L.GeoJSON layer with style:{color:'#2A7BE4',weight:5,opacity:0.8}. On layer click: calculates nearest point on clicked linestring using L.GeometryUtil (or manual projection), calls getNearestPhoto with that lat/lon, calls onPhotoSelect with returned photo id. Re-fetches on moveend if zoom>=11. File: apps/web/src/map/coverage.ts",
+
+    "Create apps/web/src/map/marker.ts: export class PositionMarker. Constructor(map:L.Map). show(lat,lon,headingDeg:number):void — places/moves an orange circle marker at position + a direction wedge (CSS-rotated triangle div icon) pointing headingDeg. hide():void. The wedge icon is an L.DivIcon with a triangle SVG rotated via CSS transform. Color #F08A1C. File: apps/web/src/map/marker.ts",
+
+    "Create apps/web/src/ui/card.ts: export class StreetViewCard. Constructor(containerId:string, onOpen:(photoId:number)=>void). render(photo:PhotoDetail|null):void — if null shows clickHint text. If photo: shows thumbnail img, near text, 'Street View' label. Clicking card calls onOpen(photo.id). Styles: fixed bottom-left, max-width 270px, border-radius 12px, box-shadow, white background. On mobile (<600px): full width minus 24px margin. File: apps/web/src/ui/card.ts",
+
+    "Create apps/web/src/viewer/panorama.ts: export class PanoramaViewer. Uses @photo-sphere-viewer/core Viewer. Constructor(containerId:string, onNeighborClick:(id:number)=>void, onBack:()=>void). open(photo:PhotoDetail):void — creates/reuses PSV Viewer in containerId. Sets panorama to photo.url with panoData:{fullWidth,fullHeight} for equirectangular. Applies northOffsetDeg as sphereCorrection.pan. First loads thumb as low-res then swaps to full URL. Calls prefetchNeighbors(photo.neighbors). close():void — hides viewer container. getCurrentYaw():number — returns current viewer yaw in degrees (compass heading). setYaw(headingDeg:number):void. Private prefetchNeighbors: preloads thumbnail URLs into Image objects. File: apps/web/src/viewer/panorama.ts",
+
+    "Create apps/web/src/viewer/arrows.ts: export class NavigationArrows. Constructor(viewerEl:HTMLElement, onNavigate:(photoId:number)=>void). update(neighbors:Neighbor[], currentHeadingDeg:number, viewerYaw:number):void — for each neighbor compute relativeAngle = normalizeAngle(neighbor.bearingDeg - viewerYaw). Show arrow only if |relativeAngle| < 70. Each arrow is a div absolutely positioned in the lower half of the viewer: translateX by sin(relativeAngle)*40vw, a white arrow SVG (chevron-up) rotated by relativeAngle degrees. Clicking navigates. clear():void. File: apps/web/src/viewer/arrows.ts",
+
+    "Create apps/web/src/viewer/minimap.ts: export class MiniMap. Constructor(containerId:string). init(map:L.Map):void — creates a small Leaflet map (160×160px) cloned from main map, same tile layer, no controls except attribution. update(lat,lon,headingDeg,fovDeg:number=75):void — moves a DivIcon marker showing position + a SVG FOV cone (wedge) rotated to headingDeg. The cone shows the ±fovDeg/2 field of view. File: apps/web/src/viewer/minimap.ts",
+
+    "Create apps/web/src/ui/controls.ts: export class ViewerControls. Constructor(containerEl:HTMLElement, callbacks:{onBack,onForward,onBackward,onReport}). render():void — creates DOM: back button top-left (← Kembali ke Peta), location info top-right (near label), forward/backward buttons bottom-right (Maju/Mundur), report button bottom-right. setLocationLabel(text:string):void. Keyboard handler on document: ArrowUp/w → onForward, ArrowDown/s → onBackward, Escape → onBack. All buttons ≥44px, high-contrast. File: apps/web/src/ui/controls.ts",
+
+    "Create apps/web/index.html: minimal HTML5 page. <head>: charset UTF-8, viewport, title 'Street View Takengon', links for Leaflet CSS, a <link> for viewer CSS. <body>: #map (full-screen), #street-view-container (hidden, full-screen absolute), #card-container, #minimap-container. <script type='module' src='/src/main.ts'>. File: apps/web/index.html",
+
+    "Create apps/web/src/main.ts: application entry point. Orchestrates all modules: 1. initMap('map'). 2. new StreetViewCard('card-container', openStreetView). 3. new PositionMarker(map). 4. loadCoverage(map, onPhotoSelect). 5. new PanoramaViewer('street-view-container', navigateTo, closeStreetView). 6. new NavigationArrows(viewerEl, navigateTo). 7. new MiniMap('minimap-container'), minimap.init(map). 8. new ViewerControls(viewerEl, {onBack:closeStreetView,onForward,onBackward,onReport}). State machine: mapMode (map visible, viewer hidden) <-> viewerMode (viewer visible, map hidden, minimap visible). onPhotoSelect(id): fetches photo, updates card. openStreetView(id): fetches photo, opens viewer, shows arrows, shows minimap, updates position marker. navigateTo(id): fetches photo, updates viewer preserving yaw. closeStreetView(): hides viewer, shows map. onForward/onBackward: finds neighbor with smallest/largest relativeAngle and navigates. File: apps/web/src/main.ts"
+  ],
+  "acceptance_criteria": [
+    "cd apps/web && npm run build — zero TypeScript errors, dist/ produced",
+    "npm run dev:web — dev server starts at localhost:5173",
+    "Opening http://localhost:5173 shows full-screen Leaflet map centered on Takengon (lat 4.62, lon 96.84)",
+    "Blue coverage lines appear after loadCoverage fetches from /api/coverage",
+    "Clicking coverage line opens Street View card bottom-left with thumbnail",
+    "Clicking card opens full-screen panorama viewer",
+    "Navigation arrows visible and clicking navigates to neighbor photo",
+    "Esc key closes viewer, returns to map",
+    "ArrowUp navigates forward, ArrowDown navigates backward",
+    "Minimap shows position dot and FOV cone that rotates as viewer yaw changes",
+    "Layout works at 360px viewport width (card spans full width minus 24px)"
+  ],
+  "verification": [
+    "cd apps/web && npm run build — exits 0, no TypeScript errors"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

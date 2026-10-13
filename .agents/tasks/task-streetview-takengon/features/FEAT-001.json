@@ -1,0 +1,53 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Project scaffolding, configuration, database migrations, and API foundation. Creates every package.json, tsconfig.json, Docker/nginx files, SQL migrations, and the Fastify server entry point with DB pool. This feature has no dependency on other FEATs — it is the foundation everything else builds on.",
+  "status": "pending",
+  "steps": [
+    "Create root package.json as npm workspaces root with workspaces: ['apps/api', 'apps/web'] and scripts: { 'dev:api': 'npm -w apps/api run dev', 'dev:web': 'npm -w apps/web run dev', 'test': 'npm -w apps/api run test' }. File: /Users/dikiafriadi/Desktop/Monetra/Project/streatview/streetview-takengon/package.json",
+
+    "Create apps/api/package.json with dependencies: fastify@^4, @fastify/cookie@^9, @fastify/jwt@^8, @fastify/multipart@^8, @fastify/rate-limit@^9, @fastify/static@^7, mysql2@^3, zod@^3, argon2@^0.31, sharp@^0.33, exiftool-vendored@^28, fast-xml-parser@^4, uuid@^9. devDependencies: typescript@^5, tsx@^4, vitest@^1, @types/node@^20. Scripts: { 'dev': 'tsx watch src/index.ts', 'build': 'tsc', 'test': 'vitest run', 'import': 'tsx src/cli/import.ts' }. File: apps/api/package.json",
+
+    "Create apps/api/tsconfig.json targeting ES2022, module NodeNext, moduleResolution NodeNext, outDir dist, strict true, rootDir src. File: apps/api/tsconfig.json",
+
+    "Create apps/web/package.json with dependencies: leaflet@^1.9, @photo-sphere-viewer/core@^5. devDependencies: vite@^5, typescript@^5, @types/leaflet@^1. Scripts: { 'dev': 'vite', 'build': 'tsc && vite build', 'preview': 'vite preview' }. File: apps/web/package.json",
+
+    "Create apps/web/tsconfig.json targeting ES2020, module ESNext, moduleResolution Bundler, strict true, lib [ES2020, DOM]. File: apps/web/tsconfig.json",
+
+    "Create apps/web/vite.config.ts: defineConfig with server proxy /api -> http://localhost:3000, and /media -> http://localhost:3000. File: apps/web/vite.config.ts",
+
+    "Create .env.example with all required vars: DATABASE_URL, JWT_SECRET, STORAGE_DRIVER=local, STORAGE_DIR=./storage, PUBLIC_BASE_URL=http://localhost:3000, TILE_URL (CartoCDN default), TILE_ATTRIBUTION, PORT=3000, ADMIN_EMAIL, ADMIN_PASSWORD_HASH. File: .env.example",
+
+    "Create docker-compose.yml with three services: db (mysql:8.0, env MYSQL_DATABASE=streetview MYSQL_USER MYSQL_PASSWORD MYSQL_ROOT_PASSWORD, volume db_data:/var/lib/mysql, volume ./db/migrations:/docker-entrypoint-initdb.d:ro, healthcheck: mysqladmin ping), api (build ./apps/api, env_file .env, depends_on db healthy, volume ./storage:/data/storage), nginx (image nginx:alpine, depends_on api, volumes ./nginx.conf and ./apps/web/dist). Ports: nginx:80->80, api NOT exposed (nginx proxies). File: docker-compose.yml",
+
+    "Create nginx.conf: server listen 80; location /api/ proxy_pass http://api:3000/api/; location /media/ proxy_pass http://api:3000/media/; location / root /usr/share/nginx/html index index.html try_files. File: nginx.conf",
+
+    "Create apps/api/Dockerfile: FROM node:20-alpine, WORKDIR /app, COPY package*.json, RUN npm ci --omit=dev, COPY dist ./dist, CMD node dist/index.js. Multi-stage: build stage runs tsc. File: apps/api/Dockerfile",
+
+    "Create db/migrations/001_init.sql with full schema: users table (id, name, email, password_hash, role ENUM admin/contributor, created_at), sequences table (id, user_id FK, title, camera, recorded_at, status ENUM draft/published/hidden), photos table (id BIGINT, sequence_id FK, seq_index, location POINT NOT NULL SRID 4326, heading_deg DECIMAL(5,2), altitude_m, captured_at, projection ENUM equirectangular/flat DEFAULT equirectangular, north_offset_deg DECIMAL(5,2) DEFAULT 0, file_path VARCHAR(255), thumb_path VARCHAR(255), width/height INT UNSIGNED, status ENUM draft/published/hidden, SPATIAL INDEX idx_location(location), UNIQUE KEY uq_seq(sequence_id,seq_index), INDEX idx_photos_status_seq(status,sequence_id)), photo_links table (from_photo_id BIGINT FK, to_photo_id BIGINT FK, bearing_deg DECIMAL(5,2), distance_m DECIMAL(7,2), PRIMARY KEY(from_photo_id,to_photo_id)). All tables: ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci. File: db/migrations/001_init.sql",
+
+    "Create db/migrations/002_places_reports.sql: places table (id, name VARCHAR(150), category VARCHAR(50), location POINT NOT NULL SRID 4326, photo_id BIGINT FK NULL, SPATIAL INDEX idx_place_loc(location)), reports table (id BIGINT, photo_id BIGINT FK, type ENUM privacy/wrong_location/other, note VARCHAR(500), status ENUM open/resolved DEFAULT open, created_at TIMESTAMP). File: db/migrations/002_places_reports.sql",
+
+    "Create db/seed/seed.ts: connects to DB using mysql2, inserts one admin user (email from env ADMIN_EMAIL, password argon2 hash of ADMIN_PASSWORD), inserts 4 seed places: Kebayakan POINT(96.862, 4.622) SRID 4326 axis-order=long-lat, Pusat Kota Takengon POINT(96.835, 4.629), Bebesen POINT(96.815, 4.605), Pegasing POINT(96.825, 4.548). Uses INSERT IGNORE so it's idempotent. File: db/seed/seed.ts",
+
+    "Create apps/api/src/db/pool.ts: creates and exports a mysql2 createPool using process.env.DATABASE_URL (parsed), connectionLimit 10, waitForConnections true. Exports typed helper execute<T>(sql, params) wrapping pool.execute with RowDataPacket cast. File: apps/api/src/db/pool.ts",
+
+    "Create apps/api/src/index.ts: builds Fastify instance with logger true. Registers @fastify/cookie, @fastify/jwt (secret from JWT_SECRET, cookie: { cookieName: 'token', signed: false }), @fastify/rate-limit (max 100, timeWindow 60s), @fastify/static (root: STORAGE_DIR, prefix: /media/). Registers all route plugins: coverage, photos, places, reports under /api, and admin routes under /api/admin. Listens on 0.0.0.0:PORT. File: apps/api/src/index.ts",
+
+    "Create README.md explaining: prerequisites (Node 20, Docker), local dev setup (npm install, cp .env.example .env, fill vars, docker compose up db, npm run dev:api, npm run dev:web), import CLI usage, test commands, Docker Compose production deploy. File: README.md"
+  ],
+  "acceptance_criteria": [
+    "npm install succeeds at repo root with no peer dependency errors",
+    "cd apps/api && npm run build completes with zero TypeScript errors",
+    "cd apps/web && npm run build completes with zero TypeScript errors",
+    "docker compose up db starts MySQL, migrations in docker-entrypoint-initdb.d run, tables exist (mysql -e 'SHOW TABLES' shows users/sequences/photos/photo_links/places/reports)",
+    "curl http://localhost:3000/ after docker compose up returns 200 (nginx serves web dist)"
+  ],
+  "verification": [
+    "npm install (from root) — exits 0",
+    "cd apps/api && npm run build — exits 0, dist/ created",
+    "cd apps/web && npm run build — exits 0, dist/ created"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

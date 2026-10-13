@@ -1,0 +1,63 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Backend API: all DB query modules, service logic (heading calculation, neighbor linking), storage driver, all public + admin routes, unit tests, and import CLI. Depends on FEAT-001 (package.json, tsconfig, DB pool, migrations must exist). Independent of FEAT-003 (frontend).",
+  "status": "pending",
+  "steps": [
+    "Create apps/api/src/storage/driver.ts: export interface StorageDriver { save(localPath: string, destKey: string): Promise<string>; url(key: string): string; delete(key: string): Promise<void>; }. File: apps/api/src/storage/driver.ts",
+
+    "Create apps/api/src/storage/local.ts: implements StorageDriver. save() copies file to STORAGE_DIR/key using fs.cp. url(key) returns PUBLIC_BASE_URL + '/media/' + key. delete() unlinks. Export factory createLocalDriver(). File: apps/api/src/storage/local.ts",
+
+    "Create apps/api/src/db/sequences.ts: export functions findSequenceById(id), createSequence(data), updateSequenceStatus(id, status), listSequencesForAdmin(). All use pool.execute with prepared statements. Types: interface Sequence { id, userId, title, camera, recordedAt, status }. File: apps/api/src/db/sequences.ts",
+
+    "Create apps/api/src/db/photos.ts: export functions: findPhotoById(id): returns photo row + neighbors array joined from photo_links. findNearest(lat, lon, maxM): uses ST_Distance_Sphere with bounding box via MBRContains — CRITICAL: all ST_GeomFromText calls use SRID 4326 with 'axis-order=long-lat' option so POINT(lon lat). getCoverageLines(bbox: {minLon,minLat,maxLon,maxLat}): SELECT photos in bbox ordered by sequence_id, seq_index, return as arrays of [lon,lat] grouped by sequence_id. updatePhoto(id, patch). insertPhoto(data). File: apps/api/src/db/photos.ts",
+
+    "Create apps/api/src/db/places.ts: export findNearestPlace(lat, lon): finds nearest place using ST_Distance_Sphere with bounding box ~500m. searchPlaces(q): LIKE %q% on name. insertPlace(data). File: apps/api/src/db/places.ts",
+
+    "Create apps/api/src/db/reports.ts: export createReport(data): inserts into reports, returns id. listReportsForAdmin(status?): lists with photo info joined. updateReportStatus(id, status). File: apps/api/src/db/reports.ts",
+
+    "Create apps/api/src/services/heading.ts: export function calculateHeadings(points: Array<{lat:number,lon:number}>): number[]. Algorithm: for each point i, compute bearing from point i-1 to i+1 using Haversine bearing formula (atan2). First point uses bearing to next, last uses bearing from previous. Then apply 3-point moving average smoothing (clamp at ends). Export function bearingBetween(lat1,lon1,lat2,lon2):number as named export too. File: apps/api/src/services/heading.ts",
+
+    "Create apps/api/src/services/neighbor.ts: export function buildPhotoLinks(photos: Array<{id:bigint,lat:number,lon:number,heading:number}>): Array<{fromId,toId,bearingDeg,distanceM}>. Links: consecutive in sequence (i->i+1 and i+1->i). Cross-sequence: for each photo find others within 15m using haversine distance, add link if not already linked, max 6 neighbors total per photo, use bearingBetween from heading service. Export haversineDistance(lat1,lon1,lat2,lon2):number. File: apps/api/src/services/neighbor.ts",
+
+    "Create apps/api/src/services/import.ts: export async function importSequence(opts:{inputPath,gpxPath?,title,userId,spacing,storageDriver}): 1. Parse GPX with fast-xml-parser to get track points [{lat,lon,time,ele}]. 2. Filter GPX points: remove spikes where consecutive distance > 50m. 3. Compute cumulative distance array. 4. Extract frame positions every opts.spacing meters by linear interpolation between GPX points. 5. For each frame: calculate heading using calculateHeadings. 6. Create sequence row in DB via createSequence. 7. For each frame: copy image file to storage via storageDriver.save, create thumbnail with sharp (640px width), save thumbnail. 8. Insert photo rows via insertPhoto. 9. Build photo_links via buildPhotoLinks and bulk insert. 10. Return summary {sequenceId, frameCount, totalDistanceM, needsReviewCount}. Note: in MVP, inputPath is a directory of pre-extracted JPEG frames; video extraction with ffmpeg is stubbed with a TODO comment. File: apps/api/src/services/import.ts",
+
+    "Create apps/api/src/cli/import.ts: parses CLI args (--input, --gpx, --title, --spacing default 8, --user-id default 1) using process.argv. Calls importSequence. Prints summary to stdout. File: apps/api/src/cli/import.ts",
+
+    "Create apps/api/src/routes/coverage.ts: Fastify plugin. GET /api/coverage?bbox=minLon,minLat,maxLon,maxLat. Validates bbox param with zod (4 numbers). Calls getCoverageLines. Returns GeoJSON FeatureCollection: type:'FeatureCollection', features: one Feature per sequence with geometry: {type:'LineString', coordinates:[[lon,lat],...]}. Returns 200 with Content-Type application/geo+json. File: apps/api/src/routes/coverage.ts",
+
+    "Create apps/api/src/routes/photos.ts: Fastify plugin. GET /api/photos/nearest?lat=&lon=&maxM=30 — validates with zod, calls findNearest, returns photo or 404. GET /api/photos/:id — calls findPhotoById (joins photo_links), calls findNearestPlace for near field, returns shape: {id, url, thumbUrl, lat, lon, headingDeg, northOffsetDeg, projection, near, neighbors:[{id,bearingDeg,distanceM}]}. File: apps/api/src/routes/photos.ts",
+
+    "Create apps/api/src/routes/places.ts: Fastify plugin. GET /api/places?q= — validates q with zod (min 1 char), calls searchPlaces, returns array of {id,name,category,lat,lon}. File: apps/api/src/routes/places.ts",
+
+    "Create apps/api/src/routes/reports.ts: Fastify plugin. POST /api/reports with body {photoId:number, type:'privacy'|'wrong_location'|'other', note?:string}. Rate-limit 5 req/min per IP using @fastify/rate-limit on this route. Validates body with zod. Calls createReport. Returns 201 {id}. File: apps/api/src/routes/reports.ts",
+
+    "Create apps/api/src/routes/admin/auth.ts: Fastify plugin. POST /api/admin/login body {email,password} validated with zod. Looks up user by email via pool.execute. Verifies password with argon2.verify. On success: signs JWT {sub:userId,role:'admin'}, sets httpOnly sameSite:strict cookie 'token', returns 200 {ok:true}. POST /api/admin/logout: clears cookie. Export authenticateAdmin hook: verifyJWT from cookie, check role=admin, else 401. File: apps/api/src/routes/admin/auth.ts",
+
+    "Create apps/api/src/routes/admin/sequences.ts: Fastify plugin with preHandler: authenticateAdmin. POST /api/admin/sequences body {title,camera?,recordedAt?} — creates sequence status=draft for req.user.sub. PATCH /api/admin/sequences/:id body {status} — updates. POST /api/admin/sequences/:id/upload multipart: accepts zip or directory of JPEGs + optional GPX file. Calls importSequence service. Returns import summary. File: apps/api/src/routes/admin/sequences.ts",
+
+    "Create apps/api/src/routes/admin/photos.ts: Fastify plugin with preHandler: authenticateAdmin. PATCH /api/admin/photos/:id body {status?,lat?,lon?,northOffsetDeg?} validated with zod. If lat/lon provided: update location using ST_GeomFromText('POINT(lon lat)',4326,'axis-order=long-lat'). Calls updatePhoto. Returns updated photo. File: apps/api/src/routes/admin/photos.ts",
+
+    "Create apps/api/src/routes/admin/reports.ts: Fastify plugin with preHandler: authenticateAdmin. GET /api/admin/reports?status=open — calls listReportsForAdmin. PATCH /api/admin/reports/:id body {status} — calls updateReportStatus. File: apps/api/src/routes/admin/reports.ts",
+
+    "Create apps/api/src/services/__tests__/heading.test.ts using Vitest: Test calculateHeadings with known input: 3 points along a straight east-west line (same lat, increasing lon) should return ~90°. Test bearingBetween: from (4.629, 96.835) to (4.629, 96.836) should be approximately 90° (due East). Test moving-average smoothing with a zigzag input smooths toward mean. File: apps/api/src/services/__tests__/heading.test.ts",
+
+    "Create apps/api/src/services/__tests__/neighbor.test.ts using Vitest: Test haversineDistance: known pair of coordinates with expected distance within 1m tolerance. Test buildPhotoLinks: 3 consecutive photos get forward+backward links (4 links total). Test cross-sequence linking: two photos 10m apart from different sequences get cross-links. Test max-neighbor cap: a photo with 8 candidates only gets 6 links. File: apps/api/src/services/__tests__/neighbor.test.ts",
+
+    "Create apps/api/src/db/__tests__/axis-order.test.ts using Vitest: This is an integration test requiring a real DB. Skip with test.skip if no DATABASE_URL in env. Test: insert a photo at known lon=96.835, lat=4.629 using ST_GeomFromText('POINT(96.835 4.629)',4326,'axis-order=long-lat'). Then SELECT ST_X(location) AS lon, ST_Y(location) AS lat. Assert lon ≈ 96.835 and lat ≈ 4.629 (within 0.0001). This proves axis order is correct. File: apps/api/src/db/__tests__/axis-order.test.ts"
+  ],
+  "acceptance_criteria": [
+    "cd apps/api && npx vitest run — heading.test.ts and neighbor.test.ts pass (axis-order test may skip without DB)",
+    "cd apps/api && npm run build — zero TS errors",
+    "GET /api/coverage?bbox=96.8,4.6,96.9,4.7 returns valid GeoJSON (FeatureCollection with features array)",
+    "GET /api/photos/nearest?lat=4.629&lon=96.835&maxM=30 returns 404 on empty DB (no crash)",
+    "POST /api/admin/login with wrong password returns 401",
+    "POST /api/reports with valid body returns 201"
+  ],
+  "verification": [
+    "cd apps/api && npx vitest run — all unit tests pass",
+    "cd apps/api && npm run build — exits 0"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
