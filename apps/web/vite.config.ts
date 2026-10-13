@@ -17,5 +17,14 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: true,
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'leaflet': ['leaflet'],
+          'psv': ['@photo-sphere-viewer/core'],
+        },
+      },
+    },
   },
 });

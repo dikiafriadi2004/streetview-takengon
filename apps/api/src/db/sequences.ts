@@ -87,7 +87,7 @@ export interface CoverageFeature {
 export async function getCoverageGeoJSON(bbox: BboxParams): Promise<CoverageFeature[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT p.sequence_id, s.title,
-            ST_X(p.location) AS lon, ST_Y(p.location) AS lat,
+            ST_Y(p.location) AS lon, ST_X(p.location) AS lat,
             p.seq_index
      FROM photos p
      JOIN sequences s ON s.id = p.sequence_id

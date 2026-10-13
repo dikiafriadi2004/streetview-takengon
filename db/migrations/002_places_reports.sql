@@ -23,4 +23,4 @@ CREATE TABLE IF NOT EXISTS reports (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Additional index for efficient status + sequence filtering
-CREATE INDEX IF NOT EXISTS idx_photos_status_seq ON photos (status, sequence_id);
+CREATE INDEX idx_photos_status_seq ON photos (status, sequence_id);

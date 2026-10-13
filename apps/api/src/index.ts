@@ -51,7 +51,10 @@ fastify.addHook('onRoute', (routeOptions) => {
 });
 
 // Serve static media files from storage
-const storageDir = process.env.STORAGE_DIR ?? path.join(__dirname, '../../storage');
+const rawStorageDir = process.env.STORAGE_DIR ?? './storage';
+const storageDir = path.isAbsolute(rawStorageDir)
+  ? rawStorageDir
+  : path.resolve(process.cwd(), rawStorageDir);
 await fastify.register(fastifyStatic, {
   root: storageDir,
   prefix: '/media/',

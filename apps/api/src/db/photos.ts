@@ -51,7 +51,7 @@ export async function findNearest(
 
   const [rows] = await pool.query<NearestPhoto[]>(
     `SELECT id, file_path, thumb_path, heading_deg, north_offset_deg, projection,
-            ST_Y(location) AS lat, ST_X(location) AS lon,
+            ST_X(location) AS lat, ST_Y(location) AS lon,
             ST_Distance_Sphere(location,
               ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326, 'axis-order=long-lat')
             ) AS dist_m
@@ -88,7 +88,7 @@ export async function findById(id: number): Promise<PhotoDetail | null> {
   const [rows] = await pool.query<Photo[]>(
     `SELECT id, sequence_id, seq_index, file_path, thumb_path,
             heading_deg, north_offset_deg, projection, status,
-            ST_Y(location) AS lat, ST_X(location) AS lon,
+            ST_X(location) AS lat, ST_Y(location) AS lon,
             captured_at
      FROM photos
      WHERE id = ?`,
@@ -218,7 +218,7 @@ export interface AdminPhotoFilter {
 export async function listAdminPhotos(filter: AdminPhotoFilter): Promise<RowDataPacket[]> {
   let sql = `SELECT id, sequence_id, seq_index, file_path, thumb_path,
                     heading_deg, north_offset_deg, projection, status,
-                    ST_Y(location) AS lat, ST_X(location) AS lon, captured_at
+                    ST_X(location) AS lat, ST_Y(location) AS lon, captured_at
              FROM photos WHERE 1=1`;
   const params: (string | number)[] = [];
 
@@ -231,7 +231,7 @@ export async function listAdminPhotos(filter: AdminPhotoFilter): Promise<RowData
     params.push(filter.status);
   }
 
-  sql += ' ORDER BY sequence_id, seq_index';
   const [rows] = await pool.query<RowDataPacket[]>(sql, params);
   return rows;
 }
+
