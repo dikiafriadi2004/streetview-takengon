@@ -27,7 +27,7 @@ export async function getNearest(lat: number, lon: number): Promise<Place | null
     `SELECT id, name, category, photo_id,
             ST_Y(location) AS lat, ST_X(location) AS lon,
             ST_Distance_Sphere(location,
-              ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326, 'axis-order=long-lat')
+              ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326)
             ) AS dist_m
      FROM places
      ORDER BY dist_m
@@ -47,7 +47,7 @@ export async function createPlace(data: {
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO places (name, category, location, photo_id)
      VALUES (?, ?,
-             ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326, 'axis-order=long-lat'),
+             ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326),
              ?)`,
     [data.name, data.category ?? null, data.lon, data.lat, data.photoId ?? null]
   );
@@ -70,7 +70,7 @@ export async function updatePlace(
   if (data.name !== undefined) { sets.push('name = ?'); params.push(data.name); }
   if (data.category !== undefined) { sets.push('category = ?'); params.push(data.category); }
   if (data.lat !== undefined && data.lon !== undefined) {
-    sets.push("location = ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326, 'axis-order=long-lat')");
+    sets.push("location = ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326)");
     params.push(data.lon, data.lat);
   }
   if (data.photoId !== undefined) { sets.push('photo_id = ?'); params.push(data.photoId); }

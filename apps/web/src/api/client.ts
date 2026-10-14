@@ -16,9 +16,19 @@ export interface PhotoNeighbor {
   distanceM: number;
 }
 
+export interface PsvPanoData {
+  fullWidth: number;
+  fullHeight: number;
+  croppedWidth: number;
+  croppedHeight: number;
+  croppedX: number;
+  croppedY: number;
+}
+
 export interface PhotoDetail extends Photo {
   near: string | null;
   neighbors: PhotoNeighbor[];
+  panoData: PsvPanoData | null;
 }
 
 export interface Place {

@@ -1,58 +1,61 @@
 import { i18n } from '../i18n/id.js';
 
 type ControlAction = 'forward' | 'backward' | 'turnLeft' | 'turnRight' | 'back';
-
 type ActionHandler = (action: ControlAction) => void;
 
+/**
+ * ViewerControls:
+ * - Tombol "← Kembali ke peta" di kiri atas
+ * - Tombol zoom (+/−) di kanan bawah
+ * - Keyboard: panah atas/bawah = maju/mundur, kiri/kanan = putar, Esc = kembali
+ *
+ * Tombol navigasi ↑←→↓ dihapus — digantikan panah di lantai (NavigationArrows).
+ */
 export class ViewerControls {
   private container: HTMLElement;
-  private handler: ActionHandler | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
-  private controlsEl: HTMLElement | null = null;
+  private backBtn: HTMLElement | null = null;
+  private zoomEl: HTMLElement | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
   }
 
   render(onAction: ActionHandler): void {
-    this.handler = onAction;
-
-    // Back button (top left)
+    // ── Tombol kembali ke peta (kiri atas) ──
     const backBtn = document.createElement('button');
     backBtn.className = 'back-btn';
-    backBtn.textContent = `← ${i18n.backToMap}`;
+    backBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      ${i18n.backToMap}
+    `;
     backBtn.setAttribute('aria-label', i18n.ariaCloseViewer);
     backBtn.addEventListener('click', () => onAction('back'));
     this.container.appendChild(backBtn);
+    this.backBtn = backBtn;
 
-    // Control buttons (bottom right)
-    const controls = document.createElement('div');
-    controls.className = 'viewer-controls';
-    controls.innerHTML = `
-      <button class="ctrl-btn" data-action="forward" aria-label="${i18n.forward}" title="${i18n.forward}">↑</button>
-      <button class="ctrl-btn" data-action="turnLeft" aria-label="${i18n.turnLeft}" title="${i18n.turnLeft}">←</button>
-      <button class="ctrl-btn" data-action="turnRight" aria-label="${i18n.turnRight}" title="${i18n.turnRight}">→</button>
-      <button class="ctrl-btn" data-action="backward" aria-label="${i18n.backward}" title="${i18n.backward}">↓</button>
+    // ── Tombol zoom +/− (kanan bawah, seperti Google Maps) ──
+    const zoom = document.createElement('div');
+    zoom.className = 'zoom-controls';
+    zoom.setAttribute('aria-label', 'Zoom');
+    zoom.innerHTML = `
+      <button class="zoom-btn" data-zoom="in"  aria-label="Perbesar" title="Perbesar">+</button>
+      <button class="zoom-btn" data-zoom="out" aria-label="Perkecil" title="Perkecil">−</button>
     `;
+    this.container.appendChild(zoom);
+    this.zoomEl = zoom;
 
-    controls.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
-      if (btn?.dataset.action) {
-        onAction(btn.dataset.action as ControlAction);
-      }
-    });
-
-    this.container.appendChild(controls);
-    this.controlsEl = controls;
-
-    // Keyboard handler
+    // ── Keyboard handler ──
     this.keyHandler = (e: KeyboardEvent) => {
       switch (e.key) {
-        case 'ArrowUp': e.preventDefault(); onAction('forward'); break;
-        case 'ArrowDown': e.preventDefault(); onAction('backward'); break;
-        case 'ArrowLeft': e.preventDefault(); onAction('turnLeft'); break;
+        case 'ArrowUp':    e.preventDefault(); onAction('forward');   break;
+        case 'ArrowDown':  e.preventDefault(); onAction('backward');  break;
+        case 'ArrowLeft':  e.preventDefault(); onAction('turnLeft');  break;
         case 'ArrowRight': e.preventDefault(); onAction('turnRight'); break;
-        case 'Escape': e.preventDefault(); onAction('back'); break;
+        case 'Escape':     e.preventDefault(); onAction('back');      break;
       }
     };
     document.addEventListener('keydown', this.keyHandler);
@@ -63,5 +66,7 @@ export class ViewerControls {
       document.removeEventListener('keydown', this.keyHandler);
       this.keyHandler = null;
     }
+    this.backBtn?.remove();  this.backBtn = null;
+    this.zoomEl?.remove();   this.zoomEl = null;
   }
 }

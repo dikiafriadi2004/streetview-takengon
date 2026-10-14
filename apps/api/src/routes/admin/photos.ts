@@ -10,12 +10,13 @@ import {
   listAdminPhotos,
   updateStatus,
   updateLocation,
+  updateNorthOffset,
   insertPhoto,
   deletePhoto,
 } from '../../db/photos.js';
 import { findOrCreateManualSequence, getNextSeqIndex } from '../../db/sequences.js';
 import { readGpsExif } from '../../services/exif.js';
-import { createThumb } from '../../services/thumbnail.js';
+import { getPanoData, normalizePhoto } from '../../services/equirect.js';
 import { buildNeighborLinks } from '../../services/neighbor.js';
 import { LocalStorageDriver } from '../../storage/local.js';
 import { pool } from '../../db/pool.js';
@@ -75,7 +76,8 @@ export async function adminPhotoRoutes(fastify: FastifyInstance): Promise<void> 
       if (lat !== undefined && lon !== undefined) {
         await updateLocation(id, lat, lon, northOffsetDeg);
       } else if (northOffsetDeg !== undefined) {
-        await updateLocation(id, 0, 0, northOffsetDeg);
+        // Only update north offset, do NOT touch the location
+        await updateNorthOffset(id, northOffsetDeg);
       }
 
       return reply.send({ message: 'Foto diperbarui' });
@@ -124,25 +126,17 @@ export async function adminPhotoRoutes(fastify: FastifyInstance): Promise<void> 
           });
         }
 
-        // Validate image dimensions
+        // Validate image dimensions & auto-detect projection
         const meta = await sharp(fileBuffer).metadata();
-        const width = meta.width ?? 0;
-        const height = meta.height ?? 0;
+        void meta; // dimensions checked implicitly by getPanoData
 
-        const projection = fields.projection ?? 'equirectangular';
-        if (projection === 'equirectangular') {
-          const ratio = width / height;
-          if (ratio < 1.9 || ratio > 2.1) {
-            return reply.code(400).send({
-              error: {
-                code: 'INVALID_RATIO',
-                message: 'Foto 360° equirectangular harus memiliki rasio 2:1',
-              },
-            });
-          }
-        }
+        // Normalize to JPEG (no padding — PSV handles partial panorama via panoData)
+        const saveBuffer = await normalizePhoto(fileBuffer);
+        const panoData = await getPanoData(fileBuffer);
+        // Always store as equirectangular so PSV handles it as a sphere
+        const projection: 'equirectangular' = 'equirectangular';
 
-        // Read EXIF GPS if lat/lon not provided
+        // Read EXIF GPS from original file if lat/lon not provided
         let lat = fields.lat ? parseFloat(fields.lat) : NaN;
         let lon = fields.lon ? parseFloat(fields.lon) : NaN;
 
@@ -167,15 +161,14 @@ export async function adminPhotoRoutes(fastify: FastifyInstance): Promise<void> 
 
         // Save files via storage driver
         const storage = getStorage();
-        const ext = path.extname(originalFilename) || '.jpg';
         const timestamp = Date.now();
-        const photoKey = `photos/p_${timestamp}${ext}`;
+        const photoKey = `photos/p_${timestamp}.jpg`;
         const thumbKey = `thumbs/t_${timestamp}.jpg`;
 
-        const photoUrl = await storage.save(photoKey, fileBuffer);
+        const photoUrl = await storage.save(photoKey, saveBuffer);
 
-        // Create thumbnail
-        const thumbBuffer = await sharp(fileBuffer)
+        // Create thumbnail from equirectangular buffer
+        const thumbBuffer = await sharp(saveBuffer)
           .resize(640, undefined, { withoutEnlargement: true })
           .jpeg({ quality: 80 })
           .toBuffer();
@@ -193,11 +186,21 @@ export async function adminPhotoRoutes(fastify: FastifyInstance): Promise<void> 
           lat,
           lon,
           headingDeg,
-          projection: projection as 'equirectangular' | 'flat',
+          projection,
+          panoData: panoData ?? null,
           filePath: photoUrl,
           thumbPath: storage.getUrl(thumbKey),
           status,
         });
+
+        // If photo is published, auto-publish the sequence too
+        // (so it shows up on the coverage map immediately)
+        if (status === 'published') {
+          await pool.query(
+            `UPDATE sequences SET status = 'published' WHERE id = ? AND status = 'draft'`,
+            [sequenceId]
+          );
+        }
 
         // Build links to nearby photos (within 15m)
         const [nearbyRows] = await pool.query<RowDataPacket[]>(
@@ -209,8 +212,8 @@ export async function adminPhotoRoutes(fastify: FastifyInstance): Promise<void> 
            FROM photos
            WHERE id != ?
              AND ST_Distance_Sphere(location,
-               ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326, 'axis-order=long-lat')
-             ) < 15`,
+               ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326)
+             ) < 30`,
           [photoId, lon, lat]
         );
 

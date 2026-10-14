@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – Street View Takengon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+  <!-- Photo Sphere Viewer for 360° preview -->
+  <link rel="stylesheet" href="/node_modules/@photo-sphere-viewer/core/index.css" />
+</head>
+<body>
+
+<!-- =========================================================
+     LOGIN SCREEN
+========================================================== -->
+<div id="screen-login" class="screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="20" fill="#1a73e8"/>
+        <path d="M20 8C14.48 8 10 12.48 10 18c0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10zm0 13.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" fill="white"/>
+      </svg>
+    </div>
+    <h1 class="login-title">Street View Takengon</h1>
+    <p class="login-subtitle">Panel Admin</p>
+
+    <form id="login-form" novalidate>
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" class="form-input" placeholder="admin@streetview.takengon" autocomplete="email" required />
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" class="form-input" placeholder="••••••••" autocomplete="current-password" required />
+      </div>
+      <div id="login-error" class="form-error" role="alert"></div>
+      <button type="submit" class="btn-primary btn-full" id="login-btn">
+        Masuk
+      </button>
+    </form>
+
+    <div class="login-back">
+      <a href="/">← Kembali ke peta</a>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     DASHBOARD (after login)
+========================================================== -->
+<div id="screen-dashboard" class="screen hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">🗺️</span>
+      <span class="sidebar-title">Admin</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-panel="sequences">
+        <span class="nav-icon">🎬</span> Sequences
+      </button>
+      <button class="nav-item" data-panel="photos">
+        <span class="nav-icon">📷</span> Foto Manual
+      </button>
+      <button class="nav-item" data-panel="places">
+        <span class="nav-icon">📍</span> Tempat
+      </button>
+      <button class="nav-item" data-panel="reports">
+        <span class="nav-icon">🚩</span> Laporan
+        <span id="report-badge" class="badge hidden">0</span>
+      </button>
+      <button class="nav-item" data-panel="settings">
+        <span class="nav-icon">⚙️</span> Pengaturan Peta
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/" class="nav-item" style="text-decoration:none">
+        <span class="nav-icon">🗺️</span> Lihat Peta
+      </a>
+      <button class="nav-item nav-logout" id="logout-btn">
+        <span class="nav-icon">🚪</span> Keluar
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- ===== SEQUENCES PANEL ===== -->
+    <section id="panel-sequences" class="panel active">
+      <div class="panel-header">
+        <h2>Sequences</h2>
+        <button class="btn-primary" id="btn-new-sequence">+ Sequence Baru</button>
+      </div>
+
+      <!-- New sequence form -->
+      <div id="form-new-sequence" class="card form-card hidden">
+        <h3>Buat Sequence Baru</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Judul Ruas *</label>
+            <input type="text" id="seq-title" class="form-input" placeholder="cth: Jalan Lebe Kader" maxlength="150" />
+          </div>
+          <div class="form-group">
+            <label>Kamera</label>
+            <input type="text" id="seq-camera" class="form-input" placeholder="cth: Insta360 X3" maxlength="100" />
+          </div>
+        </div>
+        <div id="seq-form-error" class="form-error"></div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btn-create-sequence">Buat</button>
+          <button class="btn-secondary" id="btn-cancel-sequence">Batal</button>
+        </div>
+      </div>
+
+      <!-- Upload video form -->
+      <div id="form-upload-video" class="card form-card hidden">
+        <h3>Unggah Video + GPX ke Sequence <span id="upload-seq-title"></span></h3>
+        <div class="form-group">
+          <label>File Video 360° (MP4) *</label>
+          <input type="file" id="upload-video-file" class="form-input" accept=".mp4,video/mp4" />
+        </div>
+        <div class="form-group">
+          <label>File GPX (jejak GPS) *</label>
+          <input type="file" id="upload-gpx-file" class="form-input" accept=".gpx" />
+        </div>
+        <div id="upload-progress" class="upload-progress hidden">
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+          <span id="upload-status">Mengunggah...</span>
+        </div>
+        <div id="upload-error" class="form-error"></div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btn-do-upload">Unggah & Proses</button>
+          <button class="btn-secondary" id="btn-cancel-upload">Batal</button>
+        </div>
+      </div>
+
+      <div id="sequences-table-wrap">
+        <div id="sequences-loading" class="loading-state">Memuat...</div>
+        <table class="data-table hidden" id="sequences-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Judul</th>
+              <th>Kamera</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="sequences-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== PHOTOS PANEL ===== -->
+    <section id="panel-photos" class="panel">
+      <div class="panel-header">
+        <h2>Unggah Foto Manual</h2>
+      </div>
+      <div class="card form-card">
+        <div class="form-row">
+          <div class="form-group">
+            <label>File Foto * (JPEG/PNG/WebP, maks 25 MB)</label>
+            <input type="file" id="photo-file" class="form-input" accept="image/jpeg,image/png,image/webp" />
+            <small style="color:#5f6368;font-size:12px;margin-top:4px;display:block">
+              📐 Foto panorama biasa (wide-angle) akan otomatis dikonversi ke format 360° sehingga tampil immersive seperti Google Street View.
+            </small>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude * <small>(diisi otomatis dari EXIF)</small></label>
+            <input type="number" id="photo-lat" class="form-input" step="any" placeholder="cth: 4.62912" />
+          </div>
+          <div class="form-group">
+            <label>Longitude * <small>(diisi otomatis dari EXIF)</small></label>
+            <input type="number" id="photo-lon" class="form-input" step="any" placeholder="cth: 96.83518" />
+          </div>
+          <div class="form-group">
+            <label>Arah (heading) <small>0–360°, opsional</small></label>
+            <input type="number" id="photo-heading" class="form-input" step="any" min="0" max="360" placeholder="0" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Status awal</label>
+          <select id="photo-status" class="form-select">
+            <option value="draft">Draft</option>
+            <option value="published">Terbit</option>
+            <option value="hidden">Disembunyikan</option>
+          </select>
+        </div>
+        <div id="photo-preview-wrap" class="photo-preview-wrap hidden">
+          <div style="font-size:13px;color:#5f6368;margin-bottom:6px">
+            Preview — geser untuk memutar pandangan:
+          </div>
+          <div id="photo-preview-psv" style="width:100%;height:320px;border-radius:8px;overflow:hidden;background:#111;"></div>
+          <div id="photo-preview-info" style="font-size:12px;color:#5f6368;margin-top:4px;"></div>
+        </div>
+        <div id="photo-upload-error" class="form-error"></div>
+        <div id="photo-upload-success" class="form-success hidden"></div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btn-upload-photo">Unggah Foto</button>
+        </div>
+      </div>
+
+      <!-- Photo list -->
+      <div class="panel-header" style="margin-top:24px">
+        <h3>Semua Foto (Draft & Terbit)</h3>
+        <div style="display:flex;gap:8px">
+          <select id="photo-filter-status" class="form-select" style="width:auto">
+            <option value="">Semua status</option>
+            <option value="draft">Draft</option>
+            <option value="published">Terbit</option>
+            <option value="hidden">Disembunyikan</option>
+          </select>
+          <button class="btn-secondary" id="btn-reload-photos">Muat ulang</button>
+        </div>
+      </div>
+      <div id="photos-loading" class="loading-state">Memuat...</div>
+      <table class="data-table hidden" id="photos-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Thumbnail</th>
+            <th>Lat</th>
+            <th>Lon</th>
+            <th>Heading</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="photos-tbody"></tbody>
+      </table>
+    </section>
+
+    <!-- ===== PLACES PANEL ===== -->
+    <section id="panel-places" class="panel">
+      <div class="panel-header">
+        <h2>Tempat</h2>
+        <button class="btn-primary" id="btn-new-place">+ Tempat Baru</button>
+      </div>
+
+      <!-- Place form -->
+      <div id="form-place" class="card form-card hidden">
+        <h3 id="place-form-title">Tambah Tempat</h3>
+        <input type="hidden" id="place-edit-id" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nama * (maks 150 karakter)</label>
+            <input type="text" id="place-name" class="form-input" maxlength="150" placeholder="cth: Pasar Inpres Takengon" />
+          </div>
+          <div class="form-group">
+            <label>Kategori</label>
+            <input type="text" id="place-category" class="form-input" maxlength="50" placeholder="cth: pasar, danau, jembatan" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude *</label>
+            <input type="number" id="place-lat" class="form-input" step="any" placeholder="cth: 4.62912" />
+          </div>
+          <div class="form-group">
+            <label>Longitude *</label>
+            <input type="number" id="place-lon" class="form-input" step="any" placeholder="cth: 96.83518" />
+          </div>
+        </div>
+        <div id="place-form-error" class="form-error"></div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btn-save-place">Simpan</button>
+          <button class="btn-secondary" id="btn-cancel-place">Batal</button>
+        </div>
+      </div>
+
+      <div id="places-loading" class="loading-state">Memuat...</div>
+      <table class="data-table hidden" id="places-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama</th>
+            <th>Kategori</th>
+            <th>Lat</th>
+            <th>Lon</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="places-tbody"></tbody>
+      </table>
+    </section>
+
+    <!-- ===== REPORTS PANEL ===== -->
+    <section id="panel-reports" class="panel">
+      <div class="panel-header">
+        <h2>Laporan Masalah</h2>
+        <div style="display:flex;gap:8px">
+          <select id="report-filter" class="form-select" style="width:auto">
+            <option value="open">Belum ditangani</option>
+            <option value="resolved">Sudah selesai</option>
+            <option value="">Semua</option>
+          </select>
+          <button class="btn-secondary" id="btn-reload-reports">Muat ulang</button>
+        </div>
+      </div>
+      <div id="reports-loading" class="loading-state">Memuat...</div>
+      <table class="data-table hidden" id="reports-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Foto ID</th>
+            <th>Jenis</th>
+            <th>Catatan</th>
+            <th>Tanggal</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="reports-tbody"></tbody>
+      </table>
+    </section>
+
+    <!-- ===== SETTINGS PANEL ===== -->
+    <section id="panel-settings" class="panel">
+      <div class="panel-header">
+        <h2>Pengaturan Peta Awal</h2>
+        <button class="btn-primary" id="btn-new-area">+ Wilayah Baru</button>
+      </div>
+
+      <!-- Area form -->
+      <div id="form-area" class="card form-card hidden">
+        <h3 id="area-form-title">Tambah Wilayah</h3>
+        <input type="hidden" id="area-edit-id" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nama Wilayah *</label>
+            <input type="text" id="area-name" class="form-input" maxlength="100" placeholder="cth: Kabupaten Aceh Tengah" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude Pusat *</label>
+            <input type="number" id="area-center-lat" class="form-input" step="any" placeholder="4.62" />
+          </div>
+          <div class="form-group">
+            <label>Longitude Pusat *</label>
+            <input type="number" id="area-center-lon" class="form-input" step="any" placeholder="96.84" />
+          </div>
+          <div class="form-group">
+            <label>Zoom Awal (1–19) *</label>
+            <input type="number" id="area-zoom" class="form-input" min="1" max="19" value="12" />
+          </div>
+        </div>
+        <p style="font-size:13px;color:#5f6368;margin:0 0 8px">Batas wilayah (opsional — isi semua atau kosongkan semua):</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Lat Min</label>
+            <input type="number" id="area-min-lat" class="form-input" step="any" placeholder="4.2" />
+          </div>
+          <div class="form-group">
+            <label>Lat Maks</label>
+            <input type="number" id="area-max-lat" class="form-input" step="any" placeholder="4.9" />
+          </div>
+          <div class="form-group">
+            <label>Lon Min</label>
+            <input type="number" id="area-min-lon" class="form-input" step="any" placeholder="96.5" />
+          </div>
+          <div class="form-group">
+            <label>Lon Maks</label>
+            <input type="number" id="area-max-lon" class="form-input" step="any" placeholder="97.3" />
+          </div>
+        </div>
+        <div id="area-form-error" class="form-error"></div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btn-save-area">Simpan</button>
+          <button class="btn-secondary" id="btn-cancel-area">Batal</button>
+        </div>
+      </div>
+
+      <div id="areas-loading" class="loading-state">Memuat...</div>
+      <table class="data-table hidden" id="areas-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama</th>
+            <th>Pusat</th>
+            <th>Zoom</th>
+            <th>Batas</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="areas-tbody"></tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>

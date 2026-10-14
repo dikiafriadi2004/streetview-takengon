@@ -87,7 +87,7 @@ export interface CoverageFeature {
 export async function getCoverageGeoJSON(bbox: BboxParams): Promise<CoverageFeature[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT p.sequence_id, s.title,
-            ST_Y(p.location) AS lon, ST_X(p.location) AS lat,
+            ST_X(p.location) AS lon, ST_Y(p.location) AS lat,
             p.seq_index
      FROM photos p
      JOIN sequences s ON s.id = p.sequence_id
@@ -97,7 +97,7 @@ export async function getCoverageGeoJSON(bbox: BboxParams): Promise<CoverageFeat
          ST_GeomFromText(CONCAT('POLYGON((',
            ?, ' ', ?, ',', ?, ' ', ?, ',',
            ?, ' ', ?, ',', ?, ' ', ?, ',',
-           ?, ' ', ?, '))'), 4326, 'axis-order=long-lat'),
+           ?, ' ', ?, '))'), 4326),
          p.location)
      ORDER BY p.sequence_id, p.seq_index`,
     [
@@ -116,7 +116,7 @@ export async function getCoverageGeoJSON(bbox: BboxParams): Promise<CoverageFeat
     if (!seqMap.has(sid)) {
       seqMap.set(sid, { title: row.title as string, coords: [] });
     }
-    seqMap.get(sid)!.coords.push([row.lon as number, row.lat as number]);
+    seqMap.get(sid)!.coords.push([Number(row.lon), Number(row.lat)]);
   }
 
   const features: CoverageFeature[] = [];

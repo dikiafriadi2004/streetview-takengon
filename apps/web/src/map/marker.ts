@@ -65,7 +65,6 @@ export class PositionMarker {
   updateHeading(deg: number): void {
     this.headingDeg = deg;
     if (this.marker) {
-      const latlng = this.marker.getLatLng();
       this.marker.setIcon(createMarkerIcon(deg));
     }
   }

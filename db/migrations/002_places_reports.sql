@@ -1,4 +1,5 @@
 -- Migration 002: places, reports, additional indexes
+-- Compatible with MySQL 8.0 and MariaDB 10.4+
 
 SET NAMES utf8mb4;
 
@@ -6,7 +7,7 @@ CREATE TABLE IF NOT EXISTS places (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   category VARCHAR(50),
-  location POINT NOT NULL SRID 4326,
+  location POINT NOT NULL,
   photo_id BIGINT UNSIGNED NULL,
   SPATIAL INDEX idx_place_loc (location),
   FOREIGN KEY (photo_id) REFERENCES photos(id) ON DELETE SET NULL
@@ -23,4 +24,4 @@ CREATE TABLE IF NOT EXISTS reports (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Additional index for efficient status + sequence filtering
-CREATE INDEX idx_photos_status_seq ON photos (status, sequence_id);
+CREATE INDEX IF NOT EXISTS idx_photos_status_seq ON photos (status, sequence_id);

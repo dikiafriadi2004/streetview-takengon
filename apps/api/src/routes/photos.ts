@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { findNearest, findById } from '../db/photos.js';
+import { pool } from '../db/pool.js';
+import type { RowDataPacket } from 'mysql2';
 
 const STORAGE_BASE = process.env.STORAGE_BASE ?? '';
 
@@ -45,13 +47,33 @@ export async function photoRoutes(fastify: FastifyInstance): Promise<void> {
       id: photo.id,
       url: buildPhotoUrl(photo.file_path),
       thumbUrl: buildThumbUrl(photo.thumb_path),
-      lat: photo.lat,
-      lon: photo.lon,
-      headingDeg: photo.heading_deg,
-      northOffsetDeg: photo.north_offset_deg,
+      lat: Number(photo.lat),
+      lon: Number(photo.lon),
+      headingDeg: Number(photo.heading_deg),
+      northOffsetDeg: Number(photo.north_offset_deg),
       projection: photo.projection,
-      distM: photo.dist_m,
+      distM: Number(photo.dist_m),
     });
+  });
+
+  // GET /api/photos/thumb/:id — redirect to thumbnail media URL (used for prefetch)
+  fastify.get<{ Params: { id: string } }>('/api/photos/thumb/:id', async (request, reply) => {
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return reply.code(400).send({ error: { code: 'INVALID_ID', message: 'ID tidak valid' } });
+    }
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT thumb_path FROM photos WHERE id = ? AND status = 'published'`,
+      [id]
+    );
+
+    if (!rows.length) {
+      return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Foto tidak ditemukan' } });
+    }
+
+    const thumbPath = rows[0].thumb_path as string;
+    return reply.redirect(302, buildThumbUrl(thumbPath));
   });
 
   // GET /api/photos/:id
@@ -70,16 +92,19 @@ export async function photoRoutes(fastify: FastifyInstance): Promise<void> {
       id: photo.id,
       url: buildPhotoUrl(photo.file_path),
       thumbUrl: buildThumbUrl(photo.thumb_path),
-      lat: photo.lat,
-      lon: photo.lon,
-      headingDeg: photo.heading_deg,
-      northOffsetDeg: photo.north_offset_deg,
+      lat: Number(photo.lat),
+      lon: Number(photo.lon),
+      headingDeg: Number(photo.heading_deg),
+      northOffsetDeg: Number(photo.north_offset_deg),
       projection: photo.projection,
+      panoData: photo.pano_data
+        ? (typeof photo.pano_data === 'string' ? JSON.parse(photo.pano_data) : photo.pano_data)
+        : null,
       near: photo.near,
       neighbors: photo.neighbors.map((n) => ({
         id: n.id,
-        bearingDeg: n.bearingDeg,
-        distanceM: n.distanceM,
+        bearingDeg: Number(n.bearingDeg),
+        distanceM: Number(n.distanceM),
       })),
     });
   });

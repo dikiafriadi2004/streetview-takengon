@@ -2,15 +2,19 @@
   "name": "streetview-takengon",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/api",
     "apps/web"
   ],
   "scripts": {
-    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:api": "tsx --env-file=.env watch apps/api/src/index.ts",
     "dev:web": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/api && npm run build --workspace=apps/web",
-    "test": "npm run test --workspace=apps/api"
+    "test": "npm run test --workspace=apps/api",
+    "migrate": "node scripts/migrate.js",
+    "seed": "npx tsx db/seed/seed.ts",
+    "reconvert": "node scripts/reconvert-flat-photos.mjs"
   },
   "allowScripts": {
     "argon2@0.31.2": true,

@@ -60,11 +60,18 @@ html, body {
   box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06);
   z-index: 400;
   cursor: pointer;
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  animation: cardSlideUp 0.35s ease;
+}
+
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .street-view-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  transform: translateY(-2px);
 }
 
 .sv-card-empty {
@@ -168,6 +175,19 @@ html, body {
   height: 100%;
 }
 
+/* PSV loading spinner override */
+.psv-loader {
+  background: rgba(0,0,0,0.7) !important;
+}
+
+/* Smooth zoom button animation */
+.viewer-controls .ctrl-btn {
+  transition: background 0.15s ease, transform 0.1s ease !important;
+}
+.viewer-controls .ctrl-btn:active {
+  transform: scale(0.9) !important;
+}
+
 /* =============================
    Back Button
    ============================= */
@@ -240,41 +260,44 @@ html, body {
 }
 
 /* =============================
-   Viewer Controls (bottom-right)
+   Viewer Controls — hanya zoom +/−
+   (navigasi maju/mundur via panah di lantai)
    ============================= */
-.viewer-controls {
+.zoom-controls {
   position: absolute;
-  bottom: 16px;
+  bottom: 80px;
   right: 16px;
   z-index: 1010;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
 }
 
-.viewer-controls .ctrl-btn,
-.viewer-controls button {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+.zoom-btn {
+  width: 40px;
+  height: 40px;
   background: white;
   border: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  border-bottom: 1px solid #e8eaed;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 300;
+  color: #202124;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #202124;
   transition: background 0.15s ease;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 40px;
+  min-height: 40px;
 }
+.zoom-btn:last-child { border-bottom: none; }
+.zoom-btn:hover { background: #f8f9fa; }
+.zoom-btn:active { background: #e8eaed; }
 
-.viewer-controls .ctrl-btn:hover,
-.viewer-controls button:hover {
-  background: #f0f0f0;
-}
+/* ─── Keep old .viewer-controls for backwards compat (hidden) ─── */
+.viewer-controls { display: none; }
 
 /* Report button */
 .report-btn {
@@ -285,38 +308,27 @@ html, body {
 }
 
 /* =============================
-   Navigation Arrows
+   Navigation Arrows — Google Street View style
+   Panah di lantai, perspektif, bukan tombol kotak
    ============================= */
-.nav-arrow {
-  position: absolute;
-  cursor: pointer;
-  transform: translate(-50%, -50%);
-  background: rgba(255,255,255,0.9);
-  border: none;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  z-index: 1005;
-  transition: background 0.15s ease, transform 0.15s ease;
-  padding: 0;
+.nav-arrow-ground {
+  /* position & transform set inline per-arrow */
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  z-index: 1020 !important;  /* above PSV canvas z-index */
 }
 
-.nav-arrow:hover {
-  background: white;
-  transform: translate(-50%, -50%) scale(1.1);
+.gsv-arrow-circle {
+  /* drop shadow untuk kedalaman */
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));
+  transition: filter 0.2s ease;
 }
 
-.arrow-dist {
-  font-size: 9px;
-  color: #5f6368;
-  line-height: 1;
-  margin-top: 1px;
-}
+/* Legacy .nav-arrow hidden */
+.nav-arrow { display: none; }
+
+.arrow-dist { display: none; }
 
 /* =============================
    Position Marker (map)
@@ -324,6 +336,13 @@ html, body {
 .position-marker {
   background: transparent !important;
   border: none !important;
+  animation: markerPop 0.3s ease;
+}
+
+@keyframes markerPop {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .minimap-dot {

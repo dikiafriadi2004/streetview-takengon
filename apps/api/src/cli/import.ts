@@ -93,6 +93,10 @@ export async function runImport(opts: ImportOptions): Promise<void> {
     });
     const headings = smoothHeadings(rawHeadings);
 
+    // Get base seq_index once (avoid N redundant queries and unique-key conflicts
+    // when the sequence already contains photos from a previous run)
+    const baseSeqIndex = await getNextSeqIndex(sequenceId!);
+
     for (let i = 0; i < frames.length; i++) {
       const frame = frames[i];
       const frameTime = (frame.cumulativeDist / frames[frames.length - 1].cumulativeDist) * videoDuration;
@@ -115,22 +119,20 @@ export async function runImport(opts: ImportOptions): Promise<void> {
         needsReview.push(i);
       }
 
-      const seqIndex = (await getNextSeqIndex(sequenceId)) + (photoIds.length > 0 ? 0 : 0);
-
       const photoId = await insertPhoto({
-        sequenceId,
-        seqIndex: i,
+        sequenceId: sequenceId!,
+        seqIndex: baseSeqIndex + i,
         lat: frame.lat,
         lon: frame.lon,
         headingDeg: headings[i],
         projection: 'equirectangular',
         filePath: storage.getUrl(photoKey),
         thumbPath: storage.getUrl(thumbKey),
-        status: frame.gpsMissing ? 'draft' : 'draft',
+        status: 'draft',
       });
 
       photoIds.push(photoId);
-      photoPoints.push({ id: photoId, sequenceId, seqIndex: i, lat: frame.lat, lon: frame.lon });
+      photoPoints.push({ id: photoId, sequenceId: sequenceId!, seqIndex: baseSeqIndex + i, lat: frame.lat, lon: frame.lon });
 
       if ((i + 1) % 10 === 0) {
         process.stdout.write(`\r   Mengekstrak: ${i + 1}/${frames.length} frame...`);
@@ -163,7 +165,9 @@ export async function runImport(opts: ImportOptions): Promise<void> {
 
   } finally {
     await fs.rm(tmpDir, { recursive: true }).catch(() => {});
-    await pool.end().catch(() => {});
+    // NOTE: do NOT call pool.end() here — when invoked from the server the pool
+    // is shared with Fastify and must stay open.  pool.end() is only called by
+    // the standalone CLI entry-point at the very bottom of this file.
   }
 }
 
@@ -317,5 +321,8 @@ if (process.argv[1] && process.argv[1].includes('import')) {
   }).catch((err) => {
     console.error('Import gagal:', err);
     process.exit(1);
+  }).finally(() => {
+    // Only close the pool when running as standalone CLI (not from server)
+    pool.end().catch(() => {});
   });
 }

@@ -15,7 +15,7 @@ export interface PhotoLink {
   distanceM: number;
 }
 
-const MAX_CROSS_DIST_M = 15;
+const MAX_CROSS_DIST_M = 30;   // raised from 15 to 30 for manual uploads
 const MAX_NEIGHBORS = 6;
 
 /**

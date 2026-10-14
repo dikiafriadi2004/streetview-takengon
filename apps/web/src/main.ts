@@ -190,7 +190,8 @@ function openViewer(photo: PhotoDetail): void {
   }
 
   if (!navigationArrows) {
-    navigationArrows = new NavigationArrows(viewerCanvas, async (neighborId) => {
+    // Arrows must be on viewerOverlay (above PSV canvas) not viewerCanvas
+    navigationArrows = new NavigationArrows(viewerOverlay, async (neighborId) => {
       await navigateTo(neighborId);
     });
   }
@@ -202,6 +203,15 @@ function openViewer(photo: PhotoDetail): void {
   if (!viewerControls) {
     viewerControls = new ViewerControls(viewerOverlay);
     viewerControls.render((action) => handleControlAction(action));
+
+    // Wire up zoom buttons to PSV
+    viewerOverlay.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('[data-zoom]') as HTMLElement | null;
+      if (!btn) return;
+      const zoom = btn.dataset.zoom;
+      if (zoom === 'in')  panoramaViewer?.zoomIn();
+      if (zoom === 'out') panoramaViewer?.zoomOut();
+    });
   }
 
   panoramaViewer.load(photo).then(() => {

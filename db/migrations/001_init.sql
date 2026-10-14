@@ -1,5 +1,5 @@
 -- Migration 001: Core tables (users, sequences, photos, photo_links)
--- MySQL 8.0, charset utf8mb4, SRID 4326
+-- Compatible with MySQL 8.0 and MariaDB 10.4+
 
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS photos (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   sequence_id INT UNSIGNED NOT NULL,
   seq_index INT UNSIGNED NOT NULL,
-  location POINT NOT NULL SRID 4326,
+  location POINT NOT NULL,
   heading_deg DECIMAL(5,2) NOT NULL,
   altitude_m DECIMAL(7,2),
   captured_at DATETIME,

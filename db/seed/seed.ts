@@ -51,7 +51,7 @@ async function seed(): Promise<void> {
           file_path, thumb_path, status)
        VALUES
          (?, ?, ?,
-          ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326, 'axis-order=long-lat'),
+          ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326),
           ?, 0, 'equirectangular',
           ?, ?, 'published')`,
       [
@@ -128,7 +128,7 @@ async function seed(): Promise<void> {
     await pool.query<ResultSetHeader>(
       `INSERT IGNORE INTO places (name, category, location)
        VALUES (?, ?,
-               ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326, 'axis-order=long-lat'))`,
+               ST_GeomFromText(CONCAT('POINT(',?,' ',?,')'), 4326))`,
       [p.name, p.category, p.lon, p.lat]
     );
   }

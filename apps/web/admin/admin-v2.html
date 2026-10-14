@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – Street View Takengon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin-v2.css" />
+</head>
+<body>
+
+<!-- =========================================================
+     TOP BAR
+========================================================== -->
+<header class="topbar">
+  <div class="topbar-left">
+    <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="20" fill="#1a73e8"/>
+      <path d="M20 8C14.48 8 10 12.48 10 18c0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10zm0 13.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" fill="white"/>
+    </svg>
+    <div class="topbar-title">
+      <h1>Street View Takengon</h1>
+      <span>Admin Panel</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-icon" id="btn-refresh" title="Muat ulang data">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+    </button>
+    <div class="user-menu" id="user-menu">
+      <button class="user-avatar" id="user-avatar">
+        <span>A</span>
+      </button>
+      <div class="user-dropdown hidden" id="user-dropdown">
+        <a href="/" class="dropdown-item">🗺️ Lihat Peta</a>
+        <button class="dropdown-item" id="btn-logout">🚪 Keluar</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- =========================================================
+     LOGIN SCREEN
+========================================================== -->
+<div id="screen-login" class="screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="56" height="56" viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="20" fill="#1a73e8"/>
+        <path d="M20 8C14.48 8 10 12.48 10 18c0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10zm0 13.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" fill="white"/>
+      </svg>
+    </div>
+    <h1 class="login-title">Selamat Datang</h1>
+    <p class="login-subtitle">Masuk ke Admin Panel</p>
+
+    <form id="login-form" novalidate>
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" class="form-input" placeholder="admin@streetview.takengon" autocomplete="email" required />
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" class="form-input" placeholder="••••••••" autocomplete="current-password" required />
+      </div>
+      <div id="login-error" class="form-error" role="alert"></div>
+      <button type="submit" class="btn btn-primary btn-lg btn-block" id="login-btn">
+        Masuk
+      </button>
+    </form>
+
+    <div class="login-footer">
+      <a href="/">← Kembali ke peta</a>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     DASHBOARD
+========================================================== -->
+<div id="screen-dashboard" class="screen hidden">
+
+  <!-- Stats Cards -->
+  <section class="stats-section">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #e8f0fe;">📷</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-photos">—</div>
+          <div class="stat-label">Foto</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #fef7e0;">🎬</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-sequences">—</div>
+          <div class="stat-label">Sequences</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: #e6f4ea;">📍</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-places">—</div>
+          <div class="stat-label">Tempat</div>
+        </div>
+      </div>
+      <div class="stat-card stat-card-alert" id="stat-card-reports">
+        <div class="stat-icon" style="background: #fce8e6;">🚩</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-reports">—</div>
+          <div class="stat-label">Laporan Baru</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="quick-actions">
+    <button class="btn btn-primary btn-lg" id="btn-upload-photo-quick">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <path d="M21 15l-5-5L5 21"/>
+      </svg>
+      Upload Foto
+    </button>
+    <button class="btn btn-secondary btn-lg" id="btn-create-sequence-quick">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 7l-7 5 7 5V7z"/>
+        <rect x="1" y="5" width="15" height="14" rx="2"/>
+      </svg>
+      Buat Sequence
+    </button>
+    <button class="btn btn-secondary btn-lg" id="btn-add-place-quick">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+      Tambah Tempat
+    </button>
+  </section>
+
+  <!-- Main Content Tabs -->
+  <section class="content-section">
+    <div class="tabs">
+      <button class="tab active" data-tab="photos">📷 Foto</button>
+      <button class="tab" data-tab="sequences">🎬 Sequences</button>
+      <button class="tab" data-tab="places">📍 Tempat</button>
+      <button class="tab" data-tab="reports">🚩 Laporan</button>
+      <button class="tab" data-tab="settings">⚙️ Pengaturan</button>
+    </div>
+
+    <!-- Photos Tab -->
+    <div class="tab-content active" id="tab-photos">
+      <div class="tab-header">
+        <h2>Foto Terbaru</h2>
+        <div class="tab-filters">
+          <select class="filter-select" id="photo-status-filter">
+            <option value="">Semua Status</option>
+            <option value="published">Terbit</option>
+            <option value="draft">Draft</option>
+            <option value="hidden">Disembunyikan</option>
+          </select>
+        </div>
+      </div>
+      <div class="card-grid" id="photos-grid">
+        <div class="loading-skeleton">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </div>
+      <div class="load-more-wrap hidden" id="photos-load-more-wrap">
+        <button class="btn btn-secondary" id="photos-load-more">Muat Lebih Banyak</button>
+      </div>
+    </div>
+
+    <!-- Sequences Tab -->
+    <div class="tab-content" id="tab-sequences">
+      <div class="tab-header">
+        <h2>Sequences</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" id="sequences-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Judul</th>
+              <th>Kamera</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="sequences-tbody">
+            <tr class="loading-row">
+              <td colspan="5">Memuat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Places Tab -->
+    <div class="tab-content" id="tab-places">
+      <div class="tab-header">
+        <h2>Tempat</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" id="places-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nama</th>
+              <th>Kategori</th>
+              <th>Koordinat</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="places-tbody">
+            <tr class="loading-row">
+              <td colspan="5">Memuat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Reports Tab -->
+    <div class="tab-content" id="tab-reports">
+      <div class="tab-header">
+        <h2>Laporan Masalah</h2>
+        <div class="tab-filters">
+          <select class="filter-select" id="report-status-filter">
+            <option value="open">Belum Ditangani</option>
+            <option value="resolved">Sudah Selesai</option>
+            <option value="">Semua</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" id="reports-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Foto</th>
+              <th>Jenis</th>
+              <th>Catatan</th>
+              <th>Tanggal</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="reports-tbody">
+            <tr class="loading-row">
+              <td colspan="7">Memuat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div class="tab-content" id="tab-settings">
+      <div class="tab-header">
+        <h2>Pengaturan Peta</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" id="settings-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nama Wilayah</th>
+              <th>Pusat</th>
+              <th>Zoom</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="settings-tbody">
+            <tr class="loading-row">
+              <td colspan="6">Memuat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- =========================================================
+     FLOATING ACTION BUTTON
+========================================================== -->
+<button class="fab hidden" id="fab-main" title="Upload cepat">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
+
+<!-- =========================================================
+     MODAL CONTAINER
+========================================================== -->
+<div class="modal-overlay hidden" id="modal-overlay"></div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script type="module" src="admin-v2.js"></script>
+</body>
+</html>
